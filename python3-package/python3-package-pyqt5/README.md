@@ -38,7 +38,7 @@ pip install -r requirements.txt
 验证：
 
 ```shell
-pip install pyqt5
+pip show pyqt5
 ```
 
 ## PyQt5 示例

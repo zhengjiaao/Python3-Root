@@ -20,6 +20,9 @@ pyinstaller your_script.py
 # 单文件模式 + 添加图标
 pyinstaller --onefile --icon=app.ico your_script.py
 
+# 打包命令：单文件模式 + 隐藏控制台窗口 + 添加图标
+pyinstaller --onefile --noconsole --icon=app.ico your_script.py
+
 # 打包资源文件（格式：源路径[分隔符]目标路径）
 # Windows 用 `;`，Linux/macOS 用 `:`
 pyinstaller --add-data "data/*;data" your_script.py  # Windows

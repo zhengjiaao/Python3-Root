@@ -80,3 +80,9 @@ pip install pyinstaller
 # 打包命令：单文件模式 + 隐藏控制台窗口 + 添加图标
 pyinstaller --onefile --noconsole --icon=app.ico PDF拆分工具.py
 ```
+
+示例：
+```shell
+pyinstaller --onefile --noconsole --icon='PDF 拆分.ico' PDF拆分工具.py
+pyinstaller --onefile --noconsole --icon='PDF 提取.ico' PDF提取工具.py
+```

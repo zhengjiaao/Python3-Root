@@ -327,28 +327,6 @@ class PDFSplitterApp(QMainWindow):
 
         # 日志区域
         log_group = QGroupBox("处理日志")
-        # log_group.setObjectName("logGroupBox")  # 👈 添加 Object Name
-        #
-        # log_group.setStyleSheet("""
-        #     #logGroupBox {  /* 使用 ID 选择器，优先级更高 */
-        #         border: 1px solid #c0c0c0;
-        #         border-radius: 4px;
-        #         margin-top: 20px;
-        #     }
-        #     #logGroupBox::title {
-        #         padding: 0 5px;
-        #         font-size: 30px;  /* 现在应该生效了 */
-        #         color: #333333;
-        #         font-weight: bold;
-        #     }
-        #     QTextEdit {
-        #         background-color: white;
-        #         border: 1px solid #c0c0c0;
-        #         border-radius: 4px;
-        #         font-family: Consolas, monospace;
-        #         font-size: 14px;
-        #     }
-        # """)
         log_layout = QVBoxLayout(log_group)
 
         self.log_text = QTextEdit()

@@ -6,7 +6,7 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QH
                              QCheckBox, QGroupBox, QTextEdit, QMessageBox, QSizePolicy, QDialog)
 from PyQt5.QtCore import Qt, QSize, QThread, pyqtSignal
 from PyQt5.QtGui import QPixmap, QImage, QFont, QPalette, QColor, QIcon
-
+from PathUtil import resource_path
 
 class PDFRendererThread(QThread):
     page_rendered = pyqtSignal(int, QPixmap)
@@ -112,6 +112,7 @@ class PDFExtractorApp(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("PDF页面提取工具-MyZheng")
+        self.setWindowIcon(QIcon(resource_path("resources/PDF 提取.ico")))  # 设置程序图标
         # self.setGeometry(100, 100, 1000, 700)
 
         self.resize_to_screen(scale=0.7)  # 窗口大小为屏幕的70%

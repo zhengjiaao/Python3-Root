@@ -2,3 +2,4 @@ PyMuPDF
 PyQt5
 PyQt5-stubs
 pyinstaller
+pillow

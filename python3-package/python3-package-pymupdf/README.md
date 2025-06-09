@@ -14,6 +14,9 @@ pip install PyMuPDF
 pip install PyQt5
 pip install PyQt5-stubs
 
+# 安装Pillow 图像处理库: PyInstaller 会自动使用 Pillow 将 PNG 转换为 Windows 支持的 .ico 格式
+pip install pillow
+
 # or
 pip install -r requirements.txt
 ```
@@ -85,4 +88,16 @@ pyinstaller --onefile --noconsole --icon=app.ico PDF拆分工具.py
 ```shell
 pyinstaller --onefile --noconsole --icon='PDF 拆分.ico' PDF拆分工具.py
 pyinstaller --onefile --noconsole --icon='PDF 提取.ico' PDF提取工具.py
+
+pyinstaller --add-data "resources;resources" --onefile --noconsole --windowed --icon="resources/icon.png" "PDF 工具箱.py"
+```
+
+## 清理缓存
+
+```text
+手动删除以下目录：
+
+build/
+dist/
+main.spec
 ```

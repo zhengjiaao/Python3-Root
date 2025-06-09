@@ -8,6 +8,7 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QH
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
 from PyQt5.QtGui import QFont, QIcon, QPixmap, QPalette, QColor
 import fitz  # PyMuPDF
+from PathUtil import resource_path
 
 # 设置临时文件目录（避免权限问题）
 tempfile.tempdir = os.path.expanduser("~")
@@ -133,6 +134,7 @@ class PDFSplitterApp(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("PDF拆分工具-MyZheng")
+        self.setWindowIcon(QIcon(resource_path("resources/PDF 拆分.ico")))  # 设置程序图标
         # self.setGeometry(100, 100, 700, 500) # 更小一些
         # self.setGeometry(100, 100, 800, 600) # 设置窗口大小和位置，self.setGeometry(100, 100, 新宽度, 新高度)
         # self.setGeometry(100, 100, 1000, 700) # 更大一些

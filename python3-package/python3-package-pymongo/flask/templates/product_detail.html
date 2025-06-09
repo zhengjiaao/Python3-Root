@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ product.name }} - 商品详情</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+    <div class="product-detail-container">
+        <h1>{{ product.name }}</h1>
+
+        <p><strong>价格：</strong> ${{ product.price }}</p>
+        <p><strong>分类：</strong> {{ product.category }}</p>
+        <p><strong>库存：</strong> {{ product.stock }}</p>
+        <p><strong>描述：</strong> {{ product.description or '暂无描述' }}</p>
+        <p><strong>上架时间：</strong> {{ product.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
+
+        <a href="{{ url_for('index') }}" class="btn-back">返回商品列表</a>
+    </div>
+
+</body>
+</html>

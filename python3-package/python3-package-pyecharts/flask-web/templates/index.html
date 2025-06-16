@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>PyECharts 柱状图 - Flask 示例</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pyecharts-js@1.7.1/pyecharts.min.js"></script>
+</head>
+<body>
+    <h1>商品销售情况柱状图（MACAROONS 主题）</h1>
+    <div id="bar-chart" style="width: 1000px; height: 600px;"></div>
+
+    <script>
+        fetch('/barChart')
+            .then(response => response.json())
+            .then(option => {
+                const chart = echarts.init(document.getElementById('bar-chart'));
+                chart.setOption(option);
+            });
+    </script>
+</body>
+</html>

@@ -28,8 +28,14 @@ pyinstaller --onefile --noconsole --icon=app.ico your_script.py
 pyinstaller --add-data "data/*;data" your_script.py  # Windows
 pyinstaller --add-data "data/*:data" your_script.py  # Linux/macOS
 
+# 打包资源文件：多文件模式(可以是文件或目录)
+pyinstaller --add-data "data;data" --add-data "resources;resources" --add-data "assets;assets" --add-data "config.py;." --onefile --noconsole your_script.py
+
 # 隐藏控制台（GUI 程序）
 pyinstaller --noconsole your_script.py
+
+# 打包一个单独的 *.exe 包，并添加图标+隐藏控制台
+pyinstaller --add-data "resources;resources" --onefile --noconsole --icon="resources/icon.png" your_script.py
 
 # 加密字节码（需安装 tinyaes）
 pyinstaller --onefile --key=123456 your_script.py

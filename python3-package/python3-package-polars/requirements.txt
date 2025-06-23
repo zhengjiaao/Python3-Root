@@ -1,0 +1,7 @@
+polars
+openpyxl
+fastexcel
+pandas
+numpy
+matplotlib
+seaborn

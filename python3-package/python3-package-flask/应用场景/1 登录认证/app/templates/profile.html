@@ -1,0 +1,25 @@
+<!-- templates/profile.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <h1 class="mb-4">个人资料</h1>
+        <form method="POST">
+            <div class="mb-3">
+                <label class="form-label">名字</label>
+                <input type="text" name="first_name" class="form-control" value="{{ user.first_name }}">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">姓氏</label>
+                <input type="text" name="last_name" class="form-control" value="{{ user.last_name }}">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">个人简介</label>
+                <textarea name="bio" class="form-control">{{ user.bio }}</textarea>
+            </div>
+            <button type="submit" class="btn btn-primary">保存更改</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

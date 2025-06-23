@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>编辑待办事项</title>
+</head>
+<body>
+    <h1>编辑待办事项</h1>
+    <input type="text" id="title" placeholder="标题" required>
+    <textarea id="description"></textarea>
+    <label><input type="checkbox" id="completed"> 已完成</label>
+    <input type="datetime-local" id="due_date">
+    <button onclick="updateTodo()">更新任务</button>
+    <a href="/">返回列表</a>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const id = urlParams.get('id');
+
+        function loadTodo() {
+            fetch(`/api/todos/${id}`)
+                .then(res => res.json())
+                .then(data => {
+                    document.getElementById('title').value = data.title;
+                    document.getElementById('description').value = data.description;
+                    document.getElementById('completed').checked = data.completed;
+                    if (data.due_date) {
+                        const date = new Date(data.due_date);
+                        document.getElementById('due_date').value = date.toISOString().slice(0, 16);
+                    }
+                });
+        }
+
+        function updateTodo() {
+            const title = document.getElementById('title').value;
+            const description = document.getElementById('description').value;
+            const completed = document.getElementById('completed').checked;
+            const due_date = document.getElementById('due_date').value;
+
+            fetch(`/api/todos/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title, description, completed, due_date })
+            }).then(() => {
+                window.location.href = '/';
+            });
+        }
+
+        loadTodo();
+    </script>
+</body>
+</html>

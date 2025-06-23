@@ -13,7 +13,13 @@ Flask - 轻量级微框架
 ```shell
 # 安装依赖
 # Flask生态
-pip install flask flask-sqlalchemy flask-migrate flask-cors
+pip install flask 
+
+# 可选的，数据库、表单、认证等
+pip install flask-sqlalchemy flask-migrate flask-cors
+
+# 可选的，序列化与反序列化
+pip install flask-marshmallow marshmallow-sqlalchemy
 
 # or
 pip install -r requirements.txt

@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>待办事项管理</title>
+    <style>
+        body { font-family: Arial; margin: 40px; }
+        input, textarea { display: block; margin-bottom: 10px; width: 300px; }
+        button { margin-right: 5px; }
+        .todo { border: 1px solid #ccc; padding: 10px; margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <h1>待办事项列表</h1>
+
+    <div id="form-section">
+        <input type="text" id="title" placeholder="标题" required>
+        <textarea id="description" placeholder="描述"></textarea>
+        <label><input type="checkbox" id="completed"> 已完成</label>
+        <input type="datetime-local" id="due_date">
+        <button onclick="saveTodo()">保存新任务</button>
+    </div>
+
+    <div id="todos-section"></div>
+
+    <script>
+        function fetchTodos() {
+            fetch('/api/todos')
+                .then(res => res.json())
+                .then(data => {
+                    const container = document.getElementById('todos-section');
+                    container.innerHTML = '';
+                    data.forEach(todo => {
+                        const div = document.createElement('div');
+                        div.className = 'todo';
+                        div.innerHTML = `
+                            <strong>${todo.title}</strong><br>
+                            ${todo.description || ''}<br>
+                            状态: ${todo.completed ? '已完成' : '未完成'}<br>
+                            截止时间: ${todo.due_date ? new Date(todo.due_date).toLocaleString() : '无'}<br>
+                            <button onclick="editTodo(${todo.id})">编辑</button>
+                            <button onclick="deleteTodo(${todo.id})">删除</button>
+                        `;
+                        container.appendChild(div);
+                    });
+                });
+        }
+
+        function saveTodo() {
+            const title = document.getElementById('title').value;
+            const description = document.getElementById('description').value;
+            const completed = document.getElementById('completed').checked;
+            const due_date = document.getElementById('due_date').value;
+
+            fetch('/api/todos', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title, description, completed, due_date })
+            }).then(() => fetchTodos());
+        }
+
+        function deleteTodo(id) {
+            fetch(`/api/todos/${id}`, { method: 'DELETE' })
+                .then(() => fetchTodos());
+        }
+
+        function editTodo(id) {
+            window.location.href = `/edit.html?id=${id}`;
+        }
+
+        // 初始化加载数据
+        fetchTodos();
+    </script>
+</body>
+</html>

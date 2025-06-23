@@ -2,3 +2,9 @@ flask
 flask-sqlalchemy
 flask-migrate
 flask-cors
+flask-marshmallow
+marshmallow-sqlalchemy
+flask-login
+flask-bcrypt
+flask-wtf
+wtforms

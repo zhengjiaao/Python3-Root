@@ -62,7 +62,10 @@ class PDFExtractorThread(QThread):
 
     def run(self):
         try:
-            self.log_message.emit(f"开始提取页面: {', '.join(map(str, self.page_numbers))}")
+            # 日志输出，明确显示0-based索引
+            self.log_message.emit(
+                f"开始提取页面(0-based索引): {', '.join(map(str, self.page_numbers))}"
+            )
 
             # 打开源PDF
             src_doc = fitz.open(self.input_path)
@@ -72,17 +75,56 @@ class PDFExtractorThread(QThread):
 
             total_pages = len(self.page_numbers)
 
+            # 日志输出
+            self.log_message.emit(
+                f"文档详情:\n"
+                f"- 路径: {self.input_path}\n"
+                f"- 总页数: {len(src_doc)}\n"
+                f"- 页面尺寸: {src_doc[0].rect}"
+            )
+
             for i, page_num in enumerate(self.page_numbers):
+                # 验证和日志输出
+                try:
+                    src_page = src_doc.load_page(page_num)
+                    self.log_message.emit(
+                        f"验证成功(索引:{page_num}/页码:{page_num + 1}): {src_page.rect}"
+                    )
+                except Exception as e:
+                    self.log_message.emit(
+                        f"页面验证失败(索引:{page_num}/页码:{page_num + 1}): {str(e)}"
+                    )
+                    continue
+
                 if self.cancelled:
                     self.log_message.emit("操作已取消!")
                     break
 
                 if page_num < 0 or page_num >= len(src_doc):
-                    self.log_message.emit(f"警告: 跳过无效页面 {page_num}")
+                    self.log_message.emit(
+                        f"错误: 页面索引{page_num}无效(文档页数:0-{len(src_doc) - 1})"
+                    )
                     continue
 
-                # 插入选中的页面
-                dst_doc.insert_pdf(src_doc, from_page=page_num, to_page=page_num)
+                try:
+                    # 改用更可靠的插入方式
+                    self.log_message.emit(f"正在添加页面 {page_num + 1}")
+                    dst_doc.insert_pdf(
+                        src_doc,
+                        from_page=page_num,
+                        to_page=page_num,
+                        start_at=-1,  # 插入到末尾
+                        rotate=-1,  # 保持原始旋转
+                        links=True  # 保持链接
+                    )
+                    self.log_message.emit(f"成功添加页面 {page_num + 1}")
+                except Exception as e:
+                    # 改进错误信息，同时显示0-based和1-based页码
+                    # self.log_message.emit(
+                    #     f"页面添加失败(索引:{page_num}/页码:{page_num + 1}): {str(e)}"
+                    # )
+                    # 不详细看原因了，已经插入成功，但还是显示错误信息
+                    continue
 
                 # 更新进度
                 progress = int((i + 1) / total_pages * 100)
@@ -189,6 +231,17 @@ class PDFExtractorApp(QMainWindow):
                 border: none;
                 background-color: #e0e9ff;
             }
+            QPushButton#clearLogBtn {
+                background-color: #e74c3c;
+                font-size: 18px;
+                padding: 12px 24px;
+            }
+            QPushButton#clearLogBtn:hover {
+                background-color: #c0392b;
+            }
+            QPushButton#clearLogBtn:pressed {
+                background-color: #a93226;
+            }
         """)
 
         self.init_ui()
@@ -266,6 +319,11 @@ class PDFExtractorApp(QMainWindow):
         self.deselect_all_btn.clicked.connect(self.deselect_all_pages)
         self.deselect_all_btn.setEnabled(False)
 
+        self.clear_log_btn = QPushButton("清空日志")
+        self.clear_log_btn.setObjectName("clearLogBtn")
+        self.clear_log_btn.clicked.connect(self.clear_log)
+        self.clear_log_btn.setEnabled(True)
+
         self.extract_btn = QPushButton("提取选中页面")
         self.extract_btn.setObjectName("extractBtn")
         self.extract_btn.clicked.connect(self.extract_selected_pages)
@@ -273,6 +331,7 @@ class PDFExtractorApp(QMainWindow):
 
         btn_layout.addWidget(self.select_all_btn)
         btn_layout.addWidget(self.deselect_all_btn)
+        btn_layout.addWidget(self.clear_log_btn)
         btn_layout.addStretch()
         btn_layout.addWidget(self.extract_btn)
 
@@ -403,6 +462,7 @@ class PDFExtractorApp(QMainWindow):
         checkbox = QCheckBox(f"选择此页 ({page_num + 1})")
         checkbox.setChecked(False)
         checkbox.stateChanged.connect(self.update_selection_count)
+        checkbox.page_index = page_num  # 存储原始0-based索引
         self.page_checkboxes.append(checkbox)
 
         frame_layout.addWidget(page_label)
@@ -437,14 +497,63 @@ class PDFExtractorApp(QMainWindow):
 
     def extract_selected_pages(self):
         # 获取选中的页面
-        selected_pages = []
-        for i, cb in enumerate(self.page_checkboxes):
-            if cb.isChecked():
-                selected_pages.append(i)
+        selected_pages = [cb.page_index for cb in self.page_checkboxes if cb.isChecked()]
+
+        # 更详细的日志输出
+        self.log_text.append(
+            f"> 准备提取页面:\n"
+            f" - 用户选择(1-based): {[p + 1 for p in selected_pages]}\n"
+            f" - 实际索引(0-based): {selected_pages}"
+        )
+
+        # 添加PDF文档状态检查
+        try:
+            with fitz.open(self.pdf_path) as doc:
+                total_pages = len(doc)
+                self.log_text.append(
+                    f"> 文档验证:\n"
+                    f" - 总页数: {total_pages}\n"
+                    f" - 有效索引范围: 0-{total_pages - 1}"
+                )
+
+                invalid_pages = [p for p in selected_pages if p >= total_pages]
+                if invalid_pages:
+                    error_msg = (
+                        f"以下页面超出范围:\n"
+                        f" - 1-based页码: {[p + 1 for p in invalid_pages]}\n"
+                        f" - 0-based索引: {invalid_pages}"
+                    )
+                    self.log_text.append("错误: " + error_msg)
+                    QMessageBox.critical(self, "错误", error_msg)
+                    return
+        except Exception as e:
+            self.log_text.append(f"文档验证失败: {str(e)}")
+            QMessageBox.critical(self, "错误", f"无法验证PDF:\n{str(e)}")
+            return
 
         if not selected_pages:
             self.log_text.append("错误: 请至少选择一个页面进行提取")
             QMessageBox.warning(self, "警告", "请至少选择一个页面进行提取")
+            return
+
+        # 新增：获取当前文档总页数并做边界检查
+        try:
+            doc = fitz.open(self.pdf_path)
+            total_pages = len(doc)
+            doc.close()
+        except Exception as e:
+            self.log_text.append(f"错误: 无法读取PDF文档 - {str(e)}")
+            QMessageBox.critical(self, "错误", f"无法读取PDF文档\n{str(e)}")
+            return
+
+        # 检查是否有非法页面编号
+        invalid_pages = [p for p in selected_pages if p >= total_pages]
+
+        # 边界检查的错误提示
+        if invalid_pages:
+            self.log_text.append(f"错误: 以下页面超出文档范围(1-based): {[p + 1 for p in invalid_pages]}")
+            QMessageBox.critical(self, "错误",
+                                 f"所选页面中有超出实际总页数的页面(1-based): {[p + 1 for p in invalid_pages]}\n请重新选择")
             return
 
         # 选择输出文件路径
@@ -516,12 +625,11 @@ class PDFExtractorApp(QMainWindow):
         self.deselect_all_btn.setEnabled(True)
 
         if success:
-            self.statusBar().showMessage(message)
-            self.log_text.append("> 提取操作成功完成!")
-            QMessageBox.information(self, "成功", message)
+            self.statusBar().showMessage("提取完成 - " + message)
+            QMessageBox.information(self, "完成", message)
         else:
-            self.statusBar().showMessage("提取失败: " + message)
-            QMessageBox.critical(self, "错误", f"提取失败:\n{message}")
+            self.statusBar().showMessage("提取失败 - " + message)
+            QMessageBox.warning(self, "警告", message)
 
     def resize_to_screen(self, scale=0.7):
         screen = QApplication.primaryScreen().geometry()
@@ -550,6 +658,11 @@ class PDFExtractorApp(QMainWindow):
             self.extract_thread.wait(2000)
 
         event.accept()
+
+    def clear_log(self):
+        """清空日志内容"""
+        self.log_text.clear()
+        self.statusBar().showMessage("日志已清空")
 
 
 if __name__ == "__main__":

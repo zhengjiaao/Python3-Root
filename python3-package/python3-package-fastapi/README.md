@@ -34,3 +34,15 @@ uvicorn main:app --reload 命令含义如下:
 
 * http://localhost:8000/
 * http://localhost:8000/items/1
+
+## 启动项目
+
+```shell
+uvicorn app.main:app --reload --port 8000
+# or
+python run.py
+```
+
+访问方式：
+
+Swagger UI: http://localhost:8000/docs

@@ -1,11 +1,11 @@
 import os
 import sys
 from fastapi import FastAPI
-from app.routers.api_router import api_router
-from app.database.session import engine
-from app.database.models import project as project_model
-from app.utils.exceptions import http_exception_handler, validation_exception_handler
-from app.utils.exceptions import NotFoundException, ValidationException
+from .routers.api_router import api_router
+from .database.session import engine
+from .database.models import project as project_model
+from .utils.exceptions import http_exception_handler, validation_exception_handler
+from .utils.exceptions import NotFoundException, ValidationException
 
 # 创建数据库表
 project_model.Base.metadata.create_all(bind=engine)
@@ -29,9 +29,3 @@ app.include_router(api_router, prefix="/api/v1")
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
-
-# swagger-ui：http://127.0.0.1:8000/docs
-if __name__ == '__main__':
-    import uvicorn
-
-    uvicorn.run(app='main:app', host="0.0.0.0", port=8000, reload=False, workers=1)

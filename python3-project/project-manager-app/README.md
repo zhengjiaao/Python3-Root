@@ -33,18 +33,15 @@ pip install -r requirements.txt
 pip show fastapi
 ```
 
-## 运行项目
-
-创建数据库
+## 启动项目
 
 ```shell
-CREATE DATABASE project_db;
+uvicorn app.main:app --reload --port 8000
+# or
+python run.py
 ```
 
-启动
+访问方式：
 
-```shell
-uvicorn app.main:app --reload
-```
-
+Swagger UI: http://localhost:8000/docs
 

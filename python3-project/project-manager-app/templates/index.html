@@ -1,0 +1,101 @@
+<!-- /templates/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>项目管理</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-6">
+    <h1 class="text-2xl font-bold mb-4">项目管理</h1>
+
+    <!-- 创建项目 -->
+    <div class="mb-6">
+        <h2 class="text-xl mb-2">新建项目</h2>
+        <form id="createForm" class="flex gap-2">
+            <input type="text" id="name" placeholder="项目名称" required class="border p-2">
+            <input type="text" id="description" placeholder="描述" required class="border p-2">
+            <button type="submit" class="bg-green-500 text-white px-4 py-2">创建</button>
+        </form>
+    </div>
+
+    <!-- 项目列表 -->
+    <table id="projectTable" class="w-full bg-white border rounded shadow">
+        <thead class="bg-gray-200">
+            <tr>
+                <th class="p-2">ID</th>
+                <th class="p-2">名称</th>
+                <th class="p-2">描述</th>
+                <th class="p-2">操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- 数据通过 JS 填充 -->
+        </tbody>
+    </table>
+
+    <script>
+        const API_URL = "/api/v1/projects";
+
+        // 加载项目列表
+        async function fetchProjects() {
+            const res = await fetch(API_URL);
+            const data = await res.json();
+            const tbody = document.querySelector("#projectTable tbody");
+            tbody.innerHTML = "";
+            data.items.forEach(p => {
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td class="p-2 border">${p.id}</td>
+                    <td class="p-2 border">${p.name}</td>
+                    <td class="p-2 border">${p.description}</td>
+                    <td class="p-2 border">
+                        <button onclick='editProject(${JSON.stringify(p)})' class="bg-blue-500 text-white px-2 py-1 mr-2">编辑</button>
+                        <button onclick='deleteProject(${p.id})' class="bg-red-500 text-white px-2 py-1">删除</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // 创建项目
+        document.getElementById("createForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const name = document.getElementById("name").value;
+            const description = document.getElementById("description").value;
+
+            await fetch(API_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ name, description })
+            });
+
+            document.getElementById("createForm").reset();
+            fetchProjects();
+        });
+
+        // 编辑项目
+        function editProject(project) {
+            const name = prompt("输入新名称", project.name);
+            const description = prompt("输入新描述", project.description);
+            if (name && description) {
+                fetch(`${API_URL}/${project.id}`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ name, description })
+                }).then(() => fetchProjects());
+            }
+        }
+
+        // 删除项目
+        function deleteProject(id) {
+            if (confirm("确定删除该项目？")) {
+                fetch(`${API_URL}/${id}`, { method: "DELETE" }).then(() => fetchProjects());
+            }
+        }
+
+        // 页面加载时获取数据
+        window.onload = fetchProjects;
+    </script>
+</body>
+</html>

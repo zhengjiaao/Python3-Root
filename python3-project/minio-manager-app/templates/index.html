@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>MinIO File Tester</title>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+</head>
+<body>
+    <h1>File Operations</h1>
+
+    <h2>Upload File</h2>
+    <input type="file" id="fileInput">
+    <button onclick="uploadFile()">Upload</button>
+    <p id="uploadStatus"></p>
+
+    <h2>Download File</h2>
+    <input type="text" id="downloadFilename" placeholder="File name">
+    <button onclick="downloadFile()">Download</button>
+
+    <h2>Delete File</h2>
+    <input type="text" id="deleteFilename" placeholder="File name">
+    <button onclick="deleteFile()">Delete</button>
+    <p id="deleteStatus"></p>
+
+    <script>
+        const API_BASE = "http://localhost:8000/files"
+
+        async function uploadFile() {
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await axios.post(`${API_BASE}/upload`, formData, {
+                    headers: {'Content-Type': 'multipart/form-data'}
+                });
+                document.getElementById('uploadStatus').innerText = response.data.message;
+            } catch (error) {
+                document.getElementById('uploadStatus').innerText = 'Upload failed';
+            }
+        }
+
+        function downloadFile() {
+            const filename = document.getElementById('downloadFilename').value;
+            if (!filename) return;
+
+            window.open(`${API_BASE}/download/${filename}`);
+        }
+
+        async function deleteFile() {
+            const filename = document.getElementById('deleteFilename').value;
+            if (!filename) return;
+
+            try {
+                const response = await axios.delete(`${API_BASE}/delete/${filename}`);
+                document.getElementById('deleteStatus').innerText = response.data.message;
+            } catch (error) {
+                document.getElementById('deleteStatus').innerText = 'Delete failed';
+            }
+        }
+    </script>
+</body>
+</html>

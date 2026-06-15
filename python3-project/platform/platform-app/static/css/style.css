@@ -1,0 +1,120 @@
+/* ============================================================
+   Platform App - Custom Styles
+   ============================================================ */
+
+:root {
+    --primary-color: #2563eb;
+    --secondary-color: #64748b;
+}
+
+/* Login Page */
+.login-container {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.login-card {
+    width: 420px;
+    padding: 2.5rem;
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+}
+
+.login-header {
+    text-align: center;
+    margin-bottom: 1.5rem;
+}
+
+.login-header h2 {
+    color: #1e293b;
+    margin-bottom: 0.25rem;
+}
+
+.login-footer {
+    text-align: center;
+    margin-top: 1rem;
+}
+
+/* Hero Section */
+.hero-section {
+    padding: 5rem 0 3rem;
+    background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+}
+
+/* Features Section */
+.features-section {
+    padding: 3rem 0 5rem;
+    background: #ffffff;
+}
+
+.feature-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.feature-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08) !important;
+}
+
+.feature-icon {
+    font-size: 2.5rem;
+}
+
+/* User Info Section */
+.user-info-section {
+    padding: 0 0 4rem;
+    background: #ffffff;
+}
+
+.user-avatar {
+    font-size: 4rem;
+    line-height: 1;
+}
+
+/* Footer */
+.footer {
+    margin-top: auto;
+}
+
+/* Navbar */
+.navbar-brand {
+    font-size: 1.25rem;
+}
+
+/* Toast */
+.toast {
+    min-width: 280px;
+}
+
+.toast.bg-success {
+    background-color: #198754 !important;
+}
+
+.toast.bg-danger {
+    background-color: #dc3545 !important;
+}
+
+/* Card */
+.card {
+    border-radius: 12px;
+}
+
+/* Responsive */
+@media (max-width: 575.98px) {
+    .login-card {
+        width: 90%;
+        padding: 1.5rem;
+    }
+
+    .hero-section {
+        padding: 3rem 0 2rem;
+    }
+
+    .features-section {
+        padding: 2rem 0 3rem;
+    }
+}

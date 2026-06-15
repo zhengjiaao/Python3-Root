@@ -1,0 +1,273 @@
+{% extends "admin_layout.html" %}
+
+{% block page_title %}菜单管理{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="mb-0">菜单管理</h4>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#menuModal" onclick="openCreateModal()">
+            <i class="bi bi-plus-circle"></i> 新增菜单
+        </button>
+    </div>
+
+    <!-- Menu Tree Table -->
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>菜单名称</th>
+                        <th>图标</th>
+                        <th>类型</th>
+                        <th>路径</th>
+                        <th>权限</th>
+                        <th>排序</th>
+                        <th>可见性</th>
+                        <th>状态</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="menuTableBody">
+                    <tr><td colspan="9" class="text-center text-muted py-4">加载中...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Menu Modal -->
+<div class="modal fade" id="menuModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="menuModalTitle">新增菜单</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="menuForm">
+                    <input type="hidden" id="menuId">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">上级菜单</label>
+                            <select class="form-select" id="formParentId">
+                                <option value="">无（顶级）</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">菜单类型 <span class="text-danger">*</span></label>
+                            <select class="form-select" id="formMenuType">
+                                <option value="directory">目录</option>
+                                <option value="menu">菜单</option>
+                                <option value="button">按钮</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">名称 <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="formName" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">图标</label>
+                            <input type="text" class="form-control" id="formIcon" placeholder="bi-icon-name">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">路由路径</label>
+                            <input type="text" class="form-control" id="formPath">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">组件</label>
+                            <input type="text" class="form-control" id="formComponent">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">权限标识</label>
+                            <input type="text" class="form-control" id="formPermissionKey">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">排序号</label>
+                            <input type="number" class="form-control" id="formSortOrder" value="0">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">可见性</label>
+                            <select class="form-select" id="formVisible">
+                                <option value="true">显示</option>
+                                <option value="false">隐藏</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">状态</label>
+                            <select class="form-select" id="formStatus">
+                                <option value="true">启用</option>
+                                <option value="false">禁用</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">外链</label>
+                            <select class="form-select" id="formIsExternal">
+                                <option value="false">否</option>
+                                <option value="true">是</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">缓存</label>
+                            <select class="form-select" id="formIsCache">
+                                <option value="false">否</option>
+                                <option value="true">是</option>
+                            </select>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="saveMenu()">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const typeLabels = {directory:'目录', menu:'菜单', button:'按钮'};
+const typeBadges = {directory:'bg-primary', menu:'bg-success', button:'bg-warning text-dark'};
+
+async function loadMenuTree() {
+    const data = await apiFetch('/api/menus/tree');
+    if (!data || data.code !== 200) return;
+
+    const tbody = document.getElementById('menuTableBody');
+    tbody.innerHTML = '';
+    renderMenuRows(data.data, tbody, 0);
+    if (!tbody.innerHTML) tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-3">暂无数据</td></tr>';
+}
+
+function renderMenuRows(menus, tbody, level) {
+    menus.forEach(menu => {
+        const indent = '&nbsp;&nbsp;&nbsp;&nbsp;'.repeat(level) + (level > 0 ? '└─ ' : '');
+        const iconHtml = menu.icon ? `<i class="bi bi-${escapeHtml(menu.icon)}"></i>` : '-';
+        tbody.innerHTML += `
+            <tr>
+                <td>${indent}${escapeHtml(menu.name)}</td>
+                <td>${iconHtml}</td>
+                <td><span class="badge ${typeBadges[menu.menu_type]}">${typeLabels[menu.menu_type]}</span></td>
+                <td>${escapeHtml(menu.path) || '-'}</td>
+                <td><code>${escapeHtml(menu.permission_key) || '-'}</code></td>
+                <td>${menu.sort_order}</td>
+                <td><span class="badge ${menu.visible ? 'bg-success' : 'bg-secondary'}">${menu.visible ? '显示' : '隐藏'}</span></td>
+                <td><span class="badge ${menu.status ? 'bg-success' : 'bg-secondary'}">${menu.status ? '启用' : '禁用'}</span></td>
+                <td>
+                    <button class="btn btn-sm btn-outline-primary" onclick="editMenu(${menu.id})"><i class="bi bi-pencil"></i></button>
+                    <button class="btn btn-sm btn-outline-danger" onclick="deleteMenu(${menu.id}, '${escapeAttr(menu.name)}')"><i class="bi bi-trash"></i></button>
+                </td>
+            </tr>`;
+        if (menu.children && menu.children.length) {
+            renderMenuRows(menu.children, tbody, level + 1);
+        }
+    });
+}
+
+async function loadParentOptions() {
+    const data = await apiFetch('/api/menus/tree');
+    if (!data || data.code !== 200) return;
+    const select = document.getElementById('formParentId');
+    select.innerHTML = '<option value="">无（顶级）</option>';
+    renderMenuOptions(data.data, select, 0);
+}
+
+function renderMenuOptions(menus, select, level) {
+    const indent = '--'.repeat(level) + (level > 0 ? ' ' : '');
+    menus.forEach(menu => {
+        if (menu.menu_type !== 'button') {
+            select.innerHTML += `<option value="${menu.id}">${indent}${escapeHtml(menu.name)} (${menu.menu_type})</option>`;
+        }
+        if (menu.children && menu.children.length) {
+            renderMenuOptions(menu.children, select, level + 1);
+        }
+    });
+}
+
+function openCreateModal() {
+    document.getElementById('menuModalTitle').textContent = '新增菜单';
+    document.getElementById('menuId').value = '';
+    document.getElementById('menuForm').reset();
+    loadParentOptions();
+    new bootstrap.Modal(document.getElementById('menuModal')).show();
+}
+
+async function editMenu(id) {
+    const data = await apiFetch(`/api/menus/${id}`);
+    if (!data || data.code !== 200) return;
+    const m = data.data;
+    await loadParentOptions();
+    document.getElementById('menuModalTitle').textContent = '编辑菜单';
+    document.getElementById('menuId').value = m.id;
+    document.getElementById('formParentId').value = m.parent_id || '';
+    document.getElementById('formMenuType').value = m.menu_type;
+    document.getElementById('formName').value = m.name;
+    document.getElementById('formIcon').value = m.icon || '';
+    document.getElementById('formPath').value = m.path || '';
+    document.getElementById('formComponent').value = m.component || '';
+    document.getElementById('formPermissionKey').value = m.permission_key || '';
+    document.getElementById('formSortOrder').value = m.sort_order;
+    document.getElementById('formVisible').value = m.visible ? 'true' : 'false';
+    document.getElementById('formStatus').value = m.status ? 'true' : 'false';
+    document.getElementById('formIsExternal').value = m.is_external ? 'true' : 'false';
+    document.getElementById('formIsCache').value = m.is_cache ? 'true' : 'false';
+    new bootstrap.Modal(document.getElementById('menuModal')).show();
+}
+
+async function saveMenu() {
+    const id = document.getElementById('menuId').value;
+    const payload = {
+        name: document.getElementById('formName').value,
+        parent_id: document.getElementById('formParentId').value || null,
+        menu_type: document.getElementById('formMenuType').value,
+        icon: document.getElementById('formIcon').value || null,
+        path: document.getElementById('formPath').value || null,
+        component: document.getElementById('formComponent').value || null,
+        permission_key: document.getElementById('formPermissionKey').value || null,
+        sort_order: parseInt(document.getElementById('formSortOrder').value),
+        visible: document.getElementById('formVisible').value === 'true',
+        status: document.getElementById('formStatus').value === 'true',
+        is_external: document.getElementById('formIsExternal').value === 'true',
+        is_cache: document.getElementById('formIsCache').value === 'true',
+    };
+    let data;
+    if (id) {
+        data = await apiFetch(`/api/menus/${id}`, { method: 'PUT', body: payload });
+    } else {
+        data = await apiFetch('/api/menus', { method: 'POST', body: payload });
+    }
+    if (data && data.code === 200) {
+        bootstrap.Modal.getInstance(document.getElementById('menuModal')).hide();
+        loadMenuTree();
+        showToast(id ? '菜单更新成功' : '菜单创建成功', 'success');
+    } else {
+        showToast(data.message || '操作失败', 'danger');
+    }
+}
+
+async function deleteMenu(id, name) {
+    if (!confirm(`确定删除菜单 "${name}"?`)) return;
+    const data = await apiFetch(`/api/menus/${id}`, { method: 'DELETE' });
+    if (data && data.code === 200) {
+        loadMenuTree();
+        showToast('菜单删除成功', 'success');
+    } else {
+        showToast(data?.message || '删除失败', 'danger');
+    }
+}
+
+loadMenuTree();
+</script>
+{% endblock %}

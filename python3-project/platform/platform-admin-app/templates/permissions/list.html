@@ -1,0 +1,219 @@
+{% extends "admin_layout.html" %}
+
+{% block page_title %}权限管理{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="mb-0">权限管理</h4>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#permModal" onclick="openCreateModal()">
+            <i class="bi bi-plus-circle"></i> 新增权限
+        </button>
+    </div>
+
+    <!-- Permission Table -->
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table table-hover table-striped mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>ID</th>
+                        <th>权限名称</th>
+                        <th>权限标识</th>
+                        <th>类型</th>
+                        <th>路径</th>
+                        <th>方法</th>
+                        <th>排序</th>
+                        <th>状态</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="permTableBody">
+                    <tr><td colspan="9" class="text-center text-muted py-4">加载中...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Permission Modal -->
+<div class="modal fade" id="permModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="permModalTitle">新增权限</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="permForm">
+                    <input type="hidden" id="permId">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">权限名称 <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="formName" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">权限标识 <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="formPermKey" placeholder="如 system:user:list" required>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">类型 <span class="text-danger">*</span></label>
+                            <select class="form-select" id="formType">
+                                <option value="menu">菜单</option>
+                                <option value="button">按钮</option>
+                                <option value="api">API</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">上级权限</label>
+                            <select class="form-select" id="formParentId">
+                                <option value="">无（顶级）</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">排序号</label>
+                            <input type="number" class="form-control" id="formSortOrder" value="0">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">API 路径</label>
+                            <input type="text" class="form-control" id="formPath" placeholder="如 /api/users">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">HTTP 方法</label>
+                            <select class="form-select" id="formMethod">
+                                <option value="">无</option>
+                                <option value="GET">GET</option>
+                                <option value="POST">POST</option>
+                                <option value="PUT">PUT</option>
+                                <option value="DELETE">DELETE</option>
+                                <option value="PATCH">PATCH</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">状态</label>
+                        <select class="form-select" id="formStatus">
+                            <option value="true">启用</option>
+                            <option value="false">禁用</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="savePerm()">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const typeLabels = {menu:'菜单', button:'按钮', api:'API'};
+const typeBadges = {menu:'bg-primary', button:'bg-warning text-dark', api:'bg-info'};
+
+async function loadPermissions() {
+    const data = await apiFetch('/api/permissions');
+    if (!data || data.code !== 200) return;
+
+    const tbody = document.getElementById('permTableBody');
+    tbody.innerHTML = data.data.map(p => `
+        <tr>
+            <td>${p.id}</td>
+            <td>${escapeHtml(p.name)}</td>
+            <td><code>${escapeHtml(p.permission_key)}</code></td>
+            <td><span class="badge ${typeBadges[p.type] || 'bg-secondary'}">${typeLabels[p.type] || p.type}</span></td>
+            <td><code class="small">${escapeHtml(p.path) || '-'}</code></td>
+            <td>${p.method ? `<span class="badge bg-secondary">${p.method}</span>` : '-'}</td>
+            <td>${p.sort_order}</td>
+            <td><span class="badge ${p.status ? 'bg-success' : 'bg-secondary'}">${p.status ? '启用' : '禁用'}</span></td>
+            <td>
+                <button class="btn btn-sm btn-outline-primary" onclick="editPerm(${p.id})"><i class="bi bi-pencil"></i></button>
+                <button class="btn btn-sm btn-outline-danger" onclick="deletePerm(${p.id}, '${escapeAttr(p.name)}')"><i class="bi bi-trash"></i></button>
+            </td>
+        </tr>
+    `).join('') || '<tr><td colspan="9" class="text-center text-muted py-3">暂无数据</td></tr>';
+}
+
+async function loadParentOptions() {
+    const data = await apiFetch('/api/permissions');
+    if (!data || data.code !== 200) return;
+    const select = document.getElementById('formParentId');
+    select.innerHTML = '<option value="">无（顶级）</option>';
+    data.data.forEach(p => {
+        select.innerHTML += `<option value="${p.id}">${escapeHtml(p.name)} (${escapeHtml(p.permission_key)})</option>`;
+    });
+}
+
+function openCreateModal() {
+    document.getElementById('permModalTitle').textContent = '新增权限';
+    document.getElementById('permId').value = '';
+    document.getElementById('permForm').reset();
+    loadParentOptions();
+    new bootstrap.Modal(document.getElementById('permModal')).show();
+}
+
+async function editPerm(id) {
+    const data = await apiFetch(`/api/permissions/${id}`);
+    if (!data || data.code !== 200) return;
+    const p = data.data;
+    await loadParentOptions();
+    document.getElementById('permModalTitle').textContent = '编辑权限';
+    document.getElementById('permId').value = p.id;
+    document.getElementById('formName').value = p.name;
+    document.getElementById('formPermKey').value = p.permission_key;
+    document.getElementById('formType').value = p.type;
+    document.getElementById('formParentId').value = p.parent_id || '';
+    document.getElementById('formPath').value = p.path || '';
+    document.getElementById('formMethod').value = p.method || '';
+    document.getElementById('formSortOrder').value = p.sort_order;
+    document.getElementById('formStatus').value = p.status ? 'true' : 'false';
+    new bootstrap.Modal(document.getElementById('permModal')).show();
+}
+
+async function savePerm() {
+    const id = document.getElementById('permId').value;
+    const payload = {
+        name: document.getElementById('formName').value,
+        permission_key: document.getElementById('formPermKey').value,
+        type: document.getElementById('formType').value,
+        parent_id: document.getElementById('formParentId').value || null,
+        path: document.getElementById('formPath').value || null,
+        method: document.getElementById('formMethod').value || null,
+        sort_order: parseInt(document.getElementById('formSortOrder').value),
+        status: document.getElementById('formStatus').value === 'true',
+    };
+    let data;
+    if (id) {
+        data = await apiFetch(`/api/permissions/${id}`, { method: 'PUT', body: payload });
+    } else {
+        data = await apiFetch('/api/permissions', { method: 'POST', body: payload });
+    }
+    if (data && data.code === 200) {
+        bootstrap.Modal.getInstance(document.getElementById('permModal')).hide();
+        loadPermissions();
+        showToast(id ? '权限更新成功' : '权限创建成功', 'success');
+    } else {
+        showToast(data.message || '操作失败', 'danger');
+    }
+}
+
+async function deletePerm(id, name) {
+    if (!confirmAction(`确定删除权限 "${name}"?`)) return;
+    const data = await apiFetch(`/api/permissions/${id}`, { method: 'DELETE' });
+    if (data && data.code === 200) {
+        loadPermissions();
+        showToast('权限删除成功', 'success');
+    } else {
+        showToast(data?.message || '删除失败', 'danger');
+    }
+}
+
+loadPermissions();
+</script>
+{% endblock %}

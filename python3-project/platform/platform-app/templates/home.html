@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block title %}首页 - 平台应用端{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="hero-section">
+    <div class="container text-center">
+        <h1 class="display-5 fw-bold mb-3">欢迎使用平台应用端</h1>
+        <p class="lead text-muted mb-4">Platform App 是面向用户的统一服务平台，与 Platform Admin 共享用户体系与认证能力。</p>
+        <div class="d-flex justify-content-center gap-3">
+            <a href="/login" class="btn btn-primary btn-lg" id="heroLoginBtn"><i class="bi bi-box-arrow-in-right me-2"></i>立即登录</a>
+            <a href="/admin" target="_blank" class="btn btn-outline-secondary btn-lg"><i class="bi bi-shield-lock me-2"></i>进入管理后台</a>
+        </div>
+    </div>
+</section>
+
+<!-- Features Section -->
+<section class="features-section">
+    <div class="container">
+        <div class="row g-4" id="featuresRow">
+            <div class="col-md-4">
+                <div class="feature-card card h-100 border-0 shadow-sm">
+                    <div class="card-body text-center p-4">
+                        <div class="feature-icon mb-3">
+                            <i class="bi bi-person-check text-primary"></i>
+                        </div>
+                        <h5 class="card-title">统一认证</h5>
+                        <p class="card-text text-muted">复用平台管理端的用户体系与权限控制，单点登录体验一致。</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="feature-card card h-100 border-0 shadow-sm">
+                    <div class="card-body text-center p-4">
+                        <div class="feature-icon mb-3">
+                            <i class="bi bi-shield-lock text-success"></i>
+                        </div>
+                        <h5 class="card-title">安全可靠</h5>
+                        <p class="card-text text-muted">JWT 双令牌机制，Cookie HttpOnly 防护，登录失败锁定策略。</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="feature-card card h-100 border-0 shadow-sm">
+                    <div class="card-body text-center p-4">
+                        <div class="feature-icon mb-3">
+                            <i class="bi bi-speedometer2 text-warning"></i>
+                        </div>
+                        <h5 class="card-title">高效稳定</h5>
+                        <p class="card-text text-muted">基于 FastAPI 构建，性能优异，日志完整，审计可追溯。</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- User Info Section (shown when logged in) -->
+<section class="user-info-section d-none" id="userInfoSection">
+    <div class="container">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center">
+                    <div class="user-avatar me-4">
+                        <i class="bi bi-person-circle text-secondary"></i>
+                    </div>
+                    <div>
+                        <h4 class="mb-1">欢迎回来，<span id="welcomeNickname">用户</span></h4>
+                        <p class="text-muted mb-2">您已成功登录平台应用端，可以访问个人中心管理您的资料。</p>
+                        <a href="/profile" class="btn btn-outline-primary btn-sm"><i class="bi bi-person me-1"></i>进入个人中心</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function initHome() {
+    const res = await fetch('/api/home/info');
+    const json = await res.json();
+    if (json.code === 200 && json.data && json.data.user) {
+        const user = json.data.user;
+        document.getElementById('heroLoginBtn').classList.add('d-none');
+        document.getElementById('navLogin').classList.add('d-none');
+        document.getElementById('navProfile').classList.remove('d-none');
+        document.getElementById('navLogout').classList.remove('d-none');
+        if (user.nickname) {
+            document.getElementById('navNickname').textContent = user.nickname;
+            document.getElementById('welcomeNickname').textContent = user.nickname;
+        } else {
+            document.getElementById('navNickname').textContent = user.username;
+            document.getElementById('welcomeNickname').textContent = user.username;
+        }
+        document.getElementById('userInfoSection').classList.remove('d-none');
+    }
+}
+initHome();
+</script>
+{% endblock %}

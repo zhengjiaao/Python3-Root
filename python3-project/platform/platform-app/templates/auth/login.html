@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}用户登录 - 平台应用端{% endblock %}
+
+{% block content %}
+<div class="login-container">
+    <div class="login-card">
+        <div class="login-header">
+            <h2><i class="bi bi-grid-3x3-gap-fill text-primary me-2"></i>平台应用端</h2>
+            <p class="text-muted">用户统一登录入口</p>
+        </div>
+        <form id="loginForm" onsubmit="handleLogin(event)">
+            <div class="mb-3">
+                <label for="username" class="form-label">用户名</label>
+                <input type="text" class="form-control" id="username" name="username" placeholder="请输入用户名" required autofocus>
+            </div>
+            <div class="mb-3">
+                <label for="password" class="form-label">密码</label>
+                <input type="password" class="form-control" id="password" name="password" placeholder="请输入密码" required>
+            </div>
+            <div class="d-grid">
+                <button type="submit" class="btn btn-primary" id="loginBtn">
+                    <span class="spinner-border spinner-border-sm d-none" id="loginSpinner"></span>
+                    <span id="loginText">登 录</span>
+                </button>
+            </div>
+        </form>
+        <div class="login-footer mt-3">
+            <small class="text-muted">管理员请访问 <a href="/admin" target="_blank">管理后台</a></small>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function handleLogin(e) {
+    e.preventDefault();
+    const btn = document.getElementById('loginBtn');
+    const spinner = document.getElementById('loginSpinner');
+    const text = document.getElementById('loginText');
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value;
+
+    btn.disabled = true;
+    spinner.classList.remove('d-none');
+    text.textContent = '登录中...';
+
+    try {
+        const res = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password }),
+        });
+        const json = await res.json();
+        if (json.code === 200) {
+            showToast('登录成功，正在跳转...', 'success');
+            setTimeout(() => { window.location.href = '/'; }, 600);
+        } else {
+            showToast(json.message || '登录失败', 'danger');
+        }
+    } catch (err) {
+        showToast('网络错误，请稍后重试', 'danger');
+    } finally {
+        btn.disabled = false;
+        spinner.classList.add('d-none');
+        text.textContent = '登 录';
+    }
+}
+</script>
+{% endblock %}

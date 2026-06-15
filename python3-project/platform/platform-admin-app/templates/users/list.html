@@ -1,0 +1,303 @@
+{% extends "admin_layout.html" %}
+
+{% block page_title %}用户管理{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="mb-0">用户管理</h4>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#userModal" onclick="openCreateModal()">
+            <i class="bi bi-plus-circle"></i> 新增用户
+        </button>
+    </div>
+
+    <!-- Search -->
+    <div class="card mb-3">
+        <div class="card-body py-2">
+            <div class="row g-2 align-items-center">
+                <div class="col-auto">
+                    <input type="text" class="form-control form-control-sm" id="searchKeyword" placeholder="搜索关键词..." onkeydown="if(event.key==='Enter')loadUsers()">
+                </div>
+                <div class="col-auto">
+                    <button class="btn btn-sm btn-outline-primary" onclick="loadUsers()"><i class="bi bi-search"></i> 搜索</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- User Table -->
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table table-hover table-striped mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>ID</th>
+                        <th>用户名</th>
+                        <th>昵称</th>
+                        <th>邮箱</th>
+                        <th>部门</th>
+                        <th>角色</th>
+                        <th>状态</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="userTableBody">
+                    <tr><td colspan="8" class="text-center text-muted py-4">加载中...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="card-footer d-flex justify-content-between align-items-center">
+            <span id="paginationInfo" class="text-muted small"></span>
+            <div id="paginationControls"></div>
+        </div>
+    </div>
+</div>
+
+<!-- User Modal -->
+<div class="modal fade" id="userModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="userModalTitle">新增用户</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="userForm">
+                    <input type="hidden" id="userId">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">用户名 <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="formUsername" required>
+                        </div>
+                        <div class="col-md-6 mb-3" id="passwordGroup">
+                            <label class="form-label">密码 <span class="text-danger">*</span></label>
+                            <input type="password" class="form-control" id="formPassword" placeholder="至少6位，包含字母和数字">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">昵称</label>
+                            <input type="text" class="form-control" id="formNickname">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">邮箱</label>
+                            <input type="email" class="form-control" id="formEmail">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">电话</label>
+                            <input type="text" class="form-control" id="formPhone">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">部门</label>
+                            <select class="form-select" id="formDepartment">
+                                <option value="">无部门</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">性别</label>
+                            <select class="form-select" id="formGender">
+                                <option value="0">未知</option>
+                                <option value="1">男</option>
+                                <option value="2">女</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">状态</label>
+                            <select class="form-select" id="formStatus">
+                                <option value="true">启用</option>
+                                <option value="false">禁用</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label"><i class="bi bi-shield-lock"></i> 角色</label>
+                        <div id="roleCheckboxes" class="border rounded p-2" style="max-height:150px;overflow-y:auto;"></div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="saveUser()">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentPage = 1;
+let pageSize = 10;
+let allRoles = [];
+let allDepartments = [];
+let selectedRoleIds = [];
+
+function loadPage(page) { loadUsers(page); }
+
+async function loadUsers(page = 1) {
+    currentPage = page;
+    const keyword = document.getElementById('searchKeyword').value;
+    const data = await apiFetch(`/api/users?keyword=${encodeURIComponent(keyword)}&page=${page}&page_size=${pageSize}`);
+    if (!data || data.code !== 200) return;
+
+    const result = data.data;
+    const tbody = document.getElementById('userTableBody');
+    tbody.innerHTML = result.items.map(u => `
+        <tr>
+            <td>${u.id}</td>
+            <td>${escapeHtml(u.username)}</td>
+            <td>${escapeHtml(u.nickname) || '-'}</td>
+            <td>${escapeHtml(u.email) || '-'}</td>
+            <td>${u.department ? escapeHtml(u.department.name) : '-'}</td>
+            <td>${u.roles.map(r => `<span class="badge bg-info">${escapeHtml(r.name)}</span>`).join(' ')}</td>
+            <td><span class="badge ${u.status ? 'bg-success' : 'bg-secondary'}">${u.status ? '启用' : '禁用'}</span></td>
+            <td>
+                <button class="btn btn-sm btn-outline-primary" onclick="editUser(${u.id})"><i class="bi bi-pencil"></i></button>
+                <button class="btn btn-sm btn-outline-danger" onclick="deleteUser(${u.id}, '${escapeAttr(u.username)}')"><i class="bi bi-trash"></i></button>
+                <button class="btn btn-sm btn-outline-warning" onclick="resetPassword(${u.id})" title="Reset Password"><i class="bi bi-key"></i></button>
+            </td>
+        </tr>
+    `).join('') || '<tr><td colspan="8" class="text-center text-muted py-3">暂无数据</td></tr>';
+
+    document.getElementById('paginationInfo').textContent = `共 ${result.total} 条 | 第 ${result.page} 页 / 共 ${Math.ceil(result.total / result.page_size)} 页`;
+    renderPagination('paginationControls', result.total, result.page, result.page_size);
+}
+
+// renderPagination is provided by app.js (global)
+
+async function loadDepartments() {
+    const data = await apiFetch('/api/departments/tree');
+    if (data && data.code === 200) allDepartments = data.data;
+}
+
+function renderDepartmentSelect() {
+    const select = document.getElementById('formDepartment');
+    select.innerHTML = '<option value="">无部门</option>';
+    renderDeptOptions(allDepartments, select, 0);
+}
+
+function renderDeptOptions(depts, select, level) {
+    const indent = '--'.repeat(level) + (level > 0 ? ' ' : '');
+    depts.forEach(dept => {
+        select.innerHTML += `<option value="${dept.id}">${indent}${escapeHtml(dept.name)}</option>`;
+        if (dept.children && dept.children.length) {
+            renderDeptOptions(dept.children, select, level + 1);
+        }
+    });
+}
+
+async function loadRoles() {
+    const data = await apiFetch('/api/roles/all');
+    if (data && data.code === 200) allRoles = data.data;
+}
+
+function renderRoleCheckboxes() {
+    const container = document.getElementById('roleCheckboxes');
+    container.innerHTML = allRoles.map(r => `
+        <div class="form-check form-check-inline">
+            <input class="form-check-input role-check" type="checkbox" value="${r.id}" id="roleCheck${r.id}" ${selectedRoleIds.includes(r.id) ? 'checked' : ''}>
+            <label class="form-check-label" for="roleCheck${r.id}">${escapeHtml(r.name)}</label>
+        </div>
+    `).join('') || '<span class="text-muted">暂无角色</span>';
+}
+
+function getCheckedRoleIds() {
+    return Array.from(document.querySelectorAll('.role-check:checked')).map(cb => parseInt(cb.value));
+}
+
+function openCreateModal() {
+    document.getElementById('userModalTitle').textContent = '新增用户';
+    document.getElementById('userId').value = '';
+    document.getElementById('userForm').reset();
+    document.getElementById('passwordGroup').style.display = 'block';
+    document.getElementById('formUsername').readOnly = false;
+    selectedRoleIds = [];
+    Promise.all([loadRoles(), loadDepartments()]).then(() => {
+        renderRoleCheckboxes();
+        renderDepartmentSelect();
+    });
+    new bootstrap.Modal(document.getElementById('userModal')).show();
+}
+
+async function editUser(id) {
+    const data = await apiFetch(`/api/users/${id}`);
+    if (!data || data.code !== 200) return;
+    const u = data.data;
+    selectedRoleIds = u.roles ? u.roles.map(r => r.id) : [];
+    await Promise.all([loadRoles(), loadDepartments()]);
+    document.getElementById('userModalTitle').textContent = '编辑用户';
+    document.getElementById('userId').value = u.id;
+    document.getElementById('formUsername').value = u.username;
+    document.getElementById('formUsername').readOnly = true;
+    document.getElementById('formNickname').value = u.nickname || '';
+    document.getElementById('formEmail').value = u.email || '';
+    document.getElementById('formPhone').value = u.phone || '';
+    document.getElementById('formGender').value = u.gender;
+    document.getElementById('formStatus').value = u.status ? 'true' : 'false';
+    document.getElementById('formDepartment').value = u.department ? u.department.id : '';
+    document.getElementById('passwordGroup').style.display = 'none';
+    renderRoleCheckboxes();
+    renderDepartmentSelect();
+    new bootstrap.Modal(document.getElementById('userModal')).show();
+}
+
+async function saveUser() {
+    const id = document.getElementById('userId').value;
+    const payload = {
+        username: document.getElementById('formUsername').value,
+        nickname: document.getElementById('formNickname').value || null,
+        email: document.getElementById('formEmail').value || null,
+        phone: document.getElementById('formPhone').value || null,
+        gender: parseInt(document.getElementById('formGender').value),
+        status: document.getElementById('formStatus').value === 'true',
+        department_id: document.getElementById('formDepartment').value ? parseInt(document.getElementById('formDepartment').value) : null,
+        role_ids: getCheckedRoleIds(),
+    };
+
+    let data;
+    if (id) {
+        data = await apiFetch(`/api/users/${id}`, { method: 'PUT', body: payload });
+    } else {
+        payload.password = document.getElementById('formPassword').value;
+        data = await apiFetch('/api/users', { method: 'POST', body: payload });
+    }
+    if (data && data.code === 200) {
+        bootstrap.Modal.getInstance(document.getElementById('userModal')).hide();
+        loadUsers(currentPage);
+        showToast(id ? '用户更新成功' : '用户创建成功', 'success');
+    } else {
+        showToast(data.message || '操作失败', 'danger');
+    }
+}
+
+async function deleteUser(id, username) {
+    if (!confirm(`确定删除用户 "${username}"?`)) return;
+    const data = await apiFetch(`/api/users/${id}`, { method: 'DELETE' });
+    if (data && data.code === 200) {
+        loadUsers(currentPage);
+        showToast('用户删除成功', 'success');
+    } else {
+        showToast(data?.message || '删除失败', 'danger');
+    }
+}
+
+async function resetPassword(id) {
+    if (!confirm('确定重置该用户密码？系统将生成随机强密码。')) return;
+    const data = await apiFetch(`/api/users/${id}/reset-password`, {
+        method: 'PUT'
+    });
+    if (data && data.code === 200) {
+        const newPwd = data.data?.new_password || '未知';
+        showToast(`密码已重置，新密码: ${newPwd} （请妥善记录）`, 'success');
+    } else {
+        showToast(data?.message || '重置失败', 'danger');
+    }
+}
+
+loadUsers();
+</script>
+{% endblock %}

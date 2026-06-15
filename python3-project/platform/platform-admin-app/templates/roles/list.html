@@ -1,0 +1,293 @@
+{% extends "admin_layout.html" %}
+
+{% block page_title %}角色管理{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="mb-0">角色管理</h4>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#roleModal" onclick="openCreateModal()">
+            <i class="bi bi-plus-circle"></i> 新增角色
+        </button>
+    </div>
+
+    <!-- Search -->
+    <div class="card mb-3">
+        <div class="card-body py-2">
+            <div class="row g-2 align-items-center">
+                <div class="col-auto">
+                    <input type="text" class="form-control form-control-sm" id="searchKeyword" placeholder="搜索关键词..." onkeydown="if(event.key==='Enter')loadRoles()">
+                </div>
+                <div class="col-auto">
+                    <button class="btn btn-sm btn-outline-primary" onclick="loadRoles()"><i class="bi bi-search"></i> 搜索</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Role Table -->
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table table-hover table-striped mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>ID</th>
+                        <th>角色名称</th>
+                        <th>角色标识</th>
+                        <th>排序</th>
+                        <th>数据范围</th>
+                        <th>状态</th>
+                        <th>权限</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="roleTableBody">
+                    <tr><td colspan="8" class="text-center text-muted py-4">加载中...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="card-footer d-flex justify-content-between align-items-center">
+            <span id="paginationInfo" class="text-muted small"></span>
+            <div id="paginationControls"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Role Modal -->
+<div class="modal fade" id="roleModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="roleModalTitle">新增角色</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="roleForm">
+                    <input type="hidden" id="roleId">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">角色名称 <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="formName" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">角色标识 <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="formRoleKey" required>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">排序号</label>
+                            <input type="number" class="form-control" id="formSortOrder" value="0">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">数据范围</label>
+                            <select class="form-select" id="formDataScope">
+                                <option value="1">全部数据</option>
+                                <option value="2">自定义</option>
+                                <option value="3">本部门</option>
+                                <option value="4">本部门及以下</option>
+                                <option value="5">仅本人</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">状态</label>
+                            <select class="form-select" id="formStatus">
+                                <option value="true">启用</option>
+                                <option value="false">禁用</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">备注</label>
+                        <textarea class="form-control" id="formRemark" rows="2"></textarea>
+                    </div>
+                    <hr>
+                    <div class="mb-3">
+                        <label class="form-label"><i class="bi bi-shield-lock"></i> 权限</label>
+                        <div id="permissionCheckboxes" class="border rounded p-2" style="max-height:180px;overflow-y:auto;"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label"><i class="bi bi-menu-button-wide"></i> 菜单</label>
+                        <div id="menuCheckboxes" class="border rounded p-2" style="max-height:180px;overflow-y:auto;"></div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="saveRole()">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentPage = 1;
+let allPermissions = [];
+let allMenus = [];
+let selectedPermIds = [];
+let selectedMenuIds = [];
+
+function loadPage(page) { loadRoles(page); }
+
+const scopeLabels = {1:'全部数据', 2:'自定义', 3:'本部门', 4:'本部门及以下', 5:'仅本人'};
+
+async function loadRoles(page = 1) {
+    currentPage = page;
+    const keyword = document.getElementById('searchKeyword').value;
+    const data = await apiFetch(`/api/roles?keyword=${encodeURIComponent(keyword)}&page=${page}&page_size=10`);
+    if (!data || data.code !== 200) return;
+
+    const result = data.data;
+    const tbody = document.getElementById('roleTableBody');
+    tbody.innerHTML = result.items.map(r => `
+        <tr>
+            <td>${r.id}</td>
+            <td>${escapeHtml(r.name)}</td>
+            <td><code>${escapeHtml(r.role_key)}</code></td>
+            <td>${r.sort_order}</td>
+            <td>${scopeLabels[r.data_scope] || r.data_scope}</td>
+            <td><span class="badge ${r.status ? 'bg-success' : 'bg-secondary'}">${r.status ? '启用' : '禁用'}</span></td>
+            <td>${r.permissions.map(p => `<span class="badge bg-info">${escapeHtml(p.name)}</span>`).join(' ')}</td>
+            <td>
+                <button class="btn btn-sm btn-outline-primary" onclick="editRole(${r.id})"><i class="bi bi-pencil"></i></button>
+                <button class="btn btn-sm btn-outline-danger" onclick="deleteRole(${r.id}, '${escapeAttr(r.name)}')"><i class="bi bi-trash"></i></button>
+            </td>
+        </tr>
+    `).join('') || '<tr><td colspan="8" class="text-center text-muted py-3">暂无数据</td></tr>';
+
+    document.getElementById('paginationInfo').textContent = `共 ${result.total} 条 | 第 ${result.page} 页 / 共 ${Math.ceil(result.total / result.page_size)} 页`;
+    renderPagination('paginationControls', result.total, result.page, result.page_size);
+}
+
+async function loadOptions() {
+    const [permData, menuData] = await Promise.all([
+        apiFetch('/api/permissions'),
+        apiFetch('/api/menus/tree'),
+    ]);
+    if (permData && permData.code === 200) {
+        allPermissions = permData.data;
+    }
+    if (menuData && menuData.code === 200) {
+        allMenus = flattenMenuTree(menuData.data);
+    }
+}
+
+function flattenMenuTree(tree) {
+    const result = [];
+    tree.forEach(m => {
+        result.push({id: m.id, name: m.name, menu_type: m.menu_type, parent_id: m.parent_id});
+        if (m.children && m.children.length) result.push(...flattenMenuTree(m.children));
+    });
+    return result;
+}
+
+function renderPermissionCheckboxes() {
+    const container = document.getElementById('permissionCheckboxes');
+    container.innerHTML = allPermissions.map(p => `
+        <div class="form-check form-check-inline">
+            <input class="form-check-input perm-check" type="checkbox" value="${p.id}" id="permCheck${p.id}" ${selectedPermIds.includes(p.id) ? 'checked' : ''}>
+            <label class="form-check-label" for="permCheck${p.id}">
+                <span class="badge ${p.type === 'menu' ? 'bg-primary' : p.type === 'button' ? 'bg-warning text-dark' : 'bg-info'} me-1">${p.type}</span>${escapeHtml(p.name)} <code class="small">${escapeHtml(p.permission_key)}</code>
+            </label>
+        </div>
+    `).join('') || '<span class="text-muted">暂无权限</span>';
+}
+
+function getCheckedPermIds() {
+    return Array.from(document.querySelectorAll('.perm-check:checked')).map(cb => parseInt(cb.value));
+}
+
+function renderMenuCheckboxes() {
+    const container = document.getElementById('menuCheckboxes');
+    container.innerHTML = allMenus.map(m => `
+        <div class="form-check">
+            <input class="form-check-input menu-check" type="checkbox" value="${m.id}" id="menuCheck${m.id}" ${selectedMenuIds.includes(m.id) ? 'checked' : ''}>
+            <label class="form-check-label" for="menuCheck${m.id}">
+                <span class="badge ${m.menu_type === 'directory' ? 'bg-primary' : m.menu_type === 'menu' ? 'bg-success' : 'bg-warning text-dark'} me-1">${m.menu_type}</span>${escapeHtml(m.name)}
+            </label>
+        </div>
+    `).join('');
+}
+
+function getCheckedMenuIds() {
+    return Array.from(document.querySelectorAll('.menu-check:checked')).map(cb => parseInt(cb.value));
+}
+
+function openCreateModal() {
+    document.getElementById('roleModalTitle').textContent = '新增角色';
+    document.getElementById('roleId').value = '';
+    document.getElementById('roleForm').reset();
+    document.getElementById('formRoleKey').readOnly = false;
+    selectedPermIds = [];
+    selectedMenuIds = [];
+    loadOptions().then(() => {
+        renderPermissionCheckboxes();
+        renderMenuCheckboxes();
+    });
+    new bootstrap.Modal(document.getElementById('roleModal')).show();
+}
+
+async function editRole(id) {
+    const data = await apiFetch(`/api/roles/${id}`);
+    if (!data || data.code !== 200) return;
+    const r = data.data;
+    selectedPermIds = r.permissions ? r.permissions.map(p => p.id) : [];
+    selectedMenuIds = r.menus ? r.menus.map(m => m.id) : [];
+    await loadOptions();
+    document.getElementById('roleModalTitle').textContent = '编辑角色';
+    document.getElementById('roleId').value = r.id;
+    document.getElementById('formName').value = r.name;
+    document.getElementById('formRoleKey').value = r.role_key;
+    document.getElementById('formSortOrder').value = r.sort_order;
+    document.getElementById('formDataScope').value = r.data_scope;
+    document.getElementById('formStatus').value = r.status ? 'true' : 'false';
+    document.getElementById('formRemark').value = r.remark || '';
+    document.getElementById('formRoleKey').readOnly = true;
+    renderPermissionCheckboxes();
+    renderMenuCheckboxes();
+    new bootstrap.Modal(document.getElementById('roleModal')).show();
+}
+
+async function saveRole() {
+    const id = document.getElementById('roleId').value;
+    const payload = {
+        name: document.getElementById('formName').value,
+        role_key: document.getElementById('formRoleKey').value,
+        sort_order: parseInt(document.getElementById('formSortOrder').value),
+        data_scope: parseInt(document.getElementById('formDataScope').value),
+        status: document.getElementById('formStatus').value === 'true',
+        remark: document.getElementById('formRemark').value,
+        permission_ids: getCheckedPermIds(),
+        menu_ids: getCheckedMenuIds(),
+    };
+    let data;
+    if (id) {
+        data = await apiFetch(`/api/roles/${id}`, { method: 'PUT', body: payload });
+    } else {
+        data = await apiFetch('/api/roles', { method: 'POST', body: payload });
+    }
+    if (data && data.code === 200) {
+        bootstrap.Modal.getInstance(document.getElementById('roleModal')).hide();
+        loadRoles(currentPage);
+        showToast(id ? '角色更新成功' : '角色创建成功', 'success');
+    } else {
+        showToast(data.message || '操作失败', 'danger');
+    }
+}
+
+async function deleteRole(id, name) {
+    if (!confirm(`确定删除角色 "${name}"?`)) return;
+    const data = await apiFetch(`/api/roles/${id}`, { method: 'DELETE' });
+    if (data && data.code === 200) {
+        loadRoles(currentPage);
+        showToast('角色删除成功', 'success');
+    } else {
+        showToast(data?.message || '删除失败', 'danger');
+    }
+}
+
+loadRoles();
+</script>
+{% endblock %}

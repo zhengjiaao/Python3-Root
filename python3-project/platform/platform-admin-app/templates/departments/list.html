@@ -1,0 +1,208 @@
+{% extends "admin_layout.html" %}
+
+{% block page_title %}部门管理{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="mb-0">部门管理</h4>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#deptModal" onclick="openCreateModal()">
+            <i class="bi bi-plus-circle"></i> 新增部门
+        </button>
+    </div>
+
+    <!-- Department Tree Table -->
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>部门名称</th>
+                        <th>负责人</th>
+                        <th>电话</th>
+                        <th>邮箱</th>
+                        <th>排序</th>
+                        <th>状态</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="deptTableBody">
+                    <tr><td colspan="7" class="text-center text-muted py-4">加载中...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Department Modal -->
+<div class="modal fade" id="deptModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deptModalTitle">新增部门</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="deptForm">
+                    <input type="hidden" id="deptId">
+                    <div class="mb-3">
+                        <label class="form-label">上级部门</label>
+                        <select class="form-select" id="formParentId">
+                            <option value="">无（顶级）</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">名称 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="formName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">负责人</label>
+                        <input type="text" class="form-control" id="formLeader">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">电话</label>
+                        <input type="text" class="form-control" id="formPhone">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">邮箱</label>
+                        <input type="email" class="form-control" id="formEmail">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">排序号</label>
+                        <input type="number" class="form-control" id="formSortOrder" value="0">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">状态</label>
+                        <select class="form-select" id="formStatus">
+                            <option value="true">启用</option>
+                            <option value="false">禁用</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="saveDept()">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function loadDeptTree() {
+    const data = await apiFetch('/api/departments/tree');
+    if (!data || data.code !== 200) return;
+
+    const tbody = document.getElementById('deptTableBody');
+    tbody.innerHTML = '';
+    renderDeptRows(data.data, tbody, 0);
+    if (!tbody.innerHTML) tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-3">暂无数据</td></tr>';
+}
+
+function renderDeptRows(depts, tbody, level) {
+    depts.forEach(dept => {
+        const indent = '&nbsp;&nbsp;&nbsp;&nbsp;'.repeat(level) + (level > 0 ? '└─ ' : '');
+        tbody.innerHTML += `
+            <tr>
+                <td>${indent}${escapeHtml(dept.name)}</td>
+                <td>${escapeHtml(dept.leader) || '-'}</td>
+                <td>${escapeHtml(dept.phone) || '-'}</td>
+                <td>${escapeHtml(dept.email) || '-'}</td>
+                <td>${dept.sort_order}</td>
+                <td><span class="badge ${dept.status ? 'bg-success' : 'bg-secondary'}">${dept.status ? '启用' : '禁用'}</span></td>
+                <td>
+                    <button class="btn btn-sm btn-outline-primary" onclick="editDept(${dept.id})"><i class="bi bi-pencil"></i></button>
+                    <button class="btn btn-sm btn-outline-danger" onclick="deleteDept(${dept.id}, '${escapeAttr(dept.name)}')"><i class="bi bi-trash"></i></button>
+                </td>
+            </tr>`;
+        if (dept.children && dept.children.length) {
+            renderDeptRows(dept.children, tbody, level + 1);
+        }
+    });
+}
+
+async function loadParentOptions() {
+    const data = await apiFetch('/api/departments/tree');
+    if (!data || data.code !== 200) return;
+    const select = document.getElementById('formParentId');
+    select.innerHTML = '<option value="">无（顶级）</option>';
+    renderDeptOptions(data.data, select, 0);
+}
+
+function renderDeptOptions(depts, select, level) {
+    const indent = '--'.repeat(level) + (level > 0 ? ' ' : '');
+    depts.forEach(dept => {
+        select.innerHTML += `<option value="${dept.id}">${indent}${escapeHtml(dept.name)}</option>`;
+        if (dept.children && dept.children.length) {
+            renderDeptOptions(dept.children, select, level + 1);
+        }
+    });
+}
+
+function openCreateModal() {
+    document.getElementById('deptModalTitle').textContent = '新增部门';
+    document.getElementById('deptId').value = '';
+    document.getElementById('deptForm').reset();
+    loadParentOptions();
+    new bootstrap.Modal(document.getElementById('deptModal')).show();
+}
+
+async function editDept(id) {
+    const data = await apiFetch(`/api/departments/${id}`);
+    if (!data || data.code !== 200) return;
+    const d = data.data;
+    await loadParentOptions();
+    document.getElementById('deptModalTitle').textContent = '编辑部门';
+    document.getElementById('deptId').value = d.id;
+    document.getElementById('formParentId').value = d.parent_id || '';
+    document.getElementById('formName').value = d.name;
+    document.getElementById('formLeader').value = d.leader || '';
+    document.getElementById('formPhone').value = d.phone || '';
+    document.getElementById('formEmail').value = d.email || '';
+    document.getElementById('formSortOrder').value = d.sort_order;
+    document.getElementById('formStatus').value = d.status ? 'true' : 'false';
+    new bootstrap.Modal(document.getElementById('deptModal')).show();
+}
+
+async function saveDept() {
+    const id = document.getElementById('deptId').value;
+    const payload = {
+        name: document.getElementById('formName').value,
+        parent_id: document.getElementById('formParentId').value || null,
+        leader: document.getElementById('formLeader').value || null,
+        phone: document.getElementById('formPhone').value || null,
+        email: document.getElementById('formEmail').value || null,
+        sort_order: parseInt(document.getElementById('formSortOrder').value),
+        status: document.getElementById('formStatus').value === 'true',
+    };
+    let data;
+    if (id) {
+        data = await apiFetch(`/api/departments/${id}`, { method: 'PUT', body: payload });
+    } else {
+        data = await apiFetch('/api/departments', { method: 'POST', body: payload });
+    }
+    if (data && data.code === 200) {
+        bootstrap.Modal.getInstance(document.getElementById('deptModal')).hide();
+        loadDeptTree();
+        showToast(id ? '部门更新成功' : '部门创建成功', 'success');
+    } else {
+        showToast(data.message || '操作失败', 'danger');
+    }
+}
+
+async function deleteDept(id, name) {
+    if (!confirm(`确定删除部门 "${name}"?`)) return;
+    const data = await apiFetch(`/api/departments/${id}`, { method: 'DELETE' });
+    if (data && data.code === 200) {
+        loadDeptTree();
+        showToast('部门删除成功', 'success');
+    } else {
+        showToast(data?.message || '删除失败', 'danger');
+    }
+}
+
+loadDeptTree();
+</script>
+{% endblock %}

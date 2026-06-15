@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}登录 - 平台管理{% endblock %}
+
+{% block body %}
+<div class="login-container">
+    <div class="login-card">
+        <div class="login-header">
+            <h2><i class="bi bi-shield-lock"></i> 平台管理</h2>
+            <p class="text-muted">登录您的账户</p>
+        </div>
+        <div id="loginError" class="alert alert-danger d-none" role="alert"></div>
+        <form id="loginForm">
+            <div class="mb-3">
+                <label for="username" class="form-label">用户名</label>
+                <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-person"></i></span>
+                    <input type="text" class="form-control" id="username" name="username" placeholder="请输入用户名" required autofocus>
+                </div>
+            </div>
+            <div class="mb-3">
+                <label for="password" class="form-label">密码</label>
+                <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                    <input type="password" class="form-control" id="password" name="password" placeholder="请输入密码" required>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary w-100 mb-3" id="loginBtn">
+                <span class="spinner-border spinner-border-sm d-none" id="loginSpinner"></span>
+                登录
+            </button>
+        </form>
+        <div class="login-footer">
+            <small class="text-muted">请联系管理员获取账号</small>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('loginForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const btn = document.getElementById('loginBtn');
+    const spinner = document.getElementById('loginSpinner');
+    const errorDiv = document.getElementById('loginError');
+
+    btn.disabled = true;
+    spinner.classList.remove('d-none');
+    errorDiv.classList.add('d-none');
+
+    try {
+        const response = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                username: document.getElementById('username').value,
+                password: document.getElementById('password').value,
+            })
+        });
+        const data = await response.json();
+        if (data.code === 200) {
+            window.location.href = '/dashboard';
+        } else {
+            errorDiv.textContent = data.message || '登录失败';
+            errorDiv.classList.remove('d-none');
+        }
+    } catch (err) {
+        errorDiv.textContent = '网络错误，请重试';
+        errorDiv.classList.remove('d-none');
+    } finally {
+        btn.disabled = false;
+        spinner.classList.add('d-none');
+    }
+});
+</script>
+{% endblock %}
